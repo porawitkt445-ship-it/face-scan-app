@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CHAC-DEAW Face Attendance</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: #dbdbdb;
+            font-family: 'Kanit', sans-serif;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            margin: 0;
+        }
+        .app-header { text-align: center; margin-bottom: 55px; }
+        .app-title { font-weight: 800; font-size: 1.5rem; margin-bottom: 0; }
+        .app-subtitle { font-size: 0.9rem; color: #333; }
+        .login-card {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            width: 90%;
+            max-width: 320px;
+            text-align: center;
+            position: relative;
+        }
+        .logo-img {
+            width: 100px;
+            height: 100px;
+            position: absolute;
+            top: -50px;
+            left: 50%;
+            transform: translateX(-50%);
+            border-radius: 20px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .login-title { margin-top: 50px; font-weight: 700; margin-bottom: 25px; font-size: 1.3rem; }
+        .form-control {
+            border: 1.5px solid #000;
+            border-radius: 8px;
+            text-align: center;
+            margin-bottom: 15px;
+            font-size: 0.95rem;
+        }
+        .btn-login {
+            background-color: #bce3ff;
+            color: #000;
+            font-weight: 700;
+            border-radius: 8px;
+            width: 100%;
+            padding: 8px;
+            border: none;
+            margin-bottom: 15px;
+        }
+        .btn-login:hover { background-color: #9bd2ff; }
+        .register-link { color: #000; font-weight: 700; text-decoration: underline; font-size: 0.85rem; }
+    </style>
+</head>
+<body>
+
+    <div class="app-header">
+        <div class="app-title">CHAC-DEAW</div>
+        <div class="app-subtitle">Face Attendance App</div>
+    </div>
+
+    <div class="login-card">
+        <!-- ตรวจสอบว่ามีไฟล์ logo.png ในโฟลเดอร์ static แล้ว -->
+        <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" class="logo-img">
+        
+        <div class="login-title">ล็อกอิน</div>
+        
+        <!-- แก้ action เป็น /login ให้ตรงกับ app.py -->
+        <form action="/login" method="POST">
+            <input type="text" class="form-control" name="username" placeholder="ชื่อผู้ใช้" required>
+            <input type="password" class="form-control" name="password" placeholder="รหัสผ่าน" required>
+            <input type="text" class="form-control" name="department" placeholder="แผนก/สาขา" required>
+            
+            <button type="submit" class="btn btn-login mt-2">ล็อกอิน</button>
+        </form>
+        
+        <a href="/register_teacher" class="register-link">ลงทะเบียน (เฉพาะครู)</a>
+    </div>
+
+</body>
+</html>

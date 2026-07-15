@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ลงทะเบียนข้อมูลและใบหน้า</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        body { background-color: #dbdbdb; font-family: 'Kanit', sans-serif; min-height: 100vh; padding: 20px; }
+        .register-card { background: white; border-radius: 12px; padding: 30px; width: 100%; max-width: 400px; margin: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.1); border: 1.5px solid #000; }
+        .form-control, .form-select { border: 1.5px solid #000; border-radius: 8px; margin-bottom: 15px; }
+        .btn-camera-main { background-color: #add8e6; color: #000; font-weight: 600; border: 1.5px solid #000; width: 100%; padding: 10px; border-radius: 8px; margin-bottom: 15px; }
+        .btn-save { background-color: #6610f2; color: white; font-weight: 600; border: none; width: 100%; padding: 12px; border-radius: 8px; }
+        
+        .camera-container { width: 100%; aspect-ratio: 4/3; background: #000; border-radius: 8px; overflow: hidden; margin-bottom: 10px; }
+        #cameraFeed, #previewImage { width: 100%; height: 100%; object-fit: cover; }
+        /* สลับซ้ายขวาให้เหมือนส่องกระจกเงา เฉพาะกล้องหน้า */
+        .mirror { transform: scaleX(-1); }
+    </style>
+</head>
+<body>
+
+<div class="register-card">
+    <h4>ลงทะเบียนข้อมูลและใบหน้า</h4>
+    <form id="registerForm">
+        <input type="text" class="form-control" id="student_id" placeholder="รหัสนักเรียน/นักศึกษา" required>
+        <input type="text" class="form-control" id="name" placeholder="ชื่อ-นามสกุล" required>
+        <input type="text" class="form-control" id="department" placeholder="แผนกสาขา">
+        <input type="text" class="form-control" id="room" placeholder="ห้อง">
+        <select class="form-select" id="class_group" required>
+            <option value="" selected disabled>-- เลือกระดับชั้น --</option>
+            <option value="ปวช. 1">ปวช. 1</option>
+            <option value="ปวช. 2">ปวช. 2</option>
+            <option value="ปวช. 3">ปวช. 3</option>
+            <option value="ปวส. 1">ปวส. 1</option>
+            <option value="ปวส. 2">ปวส. 2</option>
+        </select>
+
+        <div class="text-center">
+            <p class="fw-bold mb-2">ถ่ายรูปบันทึกใบหน้า</p>
+            <button type="button" class="btn btn-camera-main" id="startCameraBtn">📸 เปิดกล้อง</button>
+            
+            <div id="cameraArea" class="d-none">
+                <div class="camera-container">
+                    <video id="cameraFeed" autoplay playsinline muted></video>
+                </div>
+                <button type="button" class="btn btn-outline-primary w-100 mb-2" id="switchBtn">🔄 สลับกล้องหน้า/หลัง</button>
+                <button type="button" class="btn btn-warning w-100" id="captureBtn">📷 ถ่ายรูป</button>
+            </div>
+            
+            <div id="previewArea" class="d-none">
+                <div class="camera-container">
+                    <img id="previewImage" alt="Preview">
+                </div>
+                <button type="button" class="btn btn-secondary w-100" id="retakeBtn">🔄 ถ่ายใหม่</button>
+            </div>
+            
+            <canvas id="canvas" class="d-none"></canvas>
+        </div>
+
+        <div class="form-check my-3">
+            <input class="form-check-input border-dark" type="checkbox" id="pdpa" required>
+            <label class="form-check-label small" for="pdpa">ข้าพเจ้ายินยอมให้จัดเก็บข้อมูลตามกฎหมาย PDPA</label>
+        </div>
+
+        <button type="submit" class="btn btn-save" id="submitBtn">💾 บันทึกข้อมูล</button>
+        <a href="/dashboard" class="btn btn-success w-100 mt-2">🏠 กลับหน้าหลัก</a>
+    </form>
+</div>
+
+<script>
+    const video = document.getElementById('cameraFeed');
+    const canvas = document.getElementById('canvas');
+    const context = canvas.getContext('2d');
+    const cameraArea = document.getElementById('cameraArea');
+    const previewArea = document.getElementById('previewArea');
+    const switchBtn = document.getElementById('switchBtn');
+    
+    let streamReference = null;
+    let uploadedBase64 = "";
+    let currentFacingMode = "user"; // เริ่มที่กล้องหน้า
+
+    // ฟังก์ชันเปิดกล้องแบบเลือกโหมดได้
+    function startCamera(mode) {
+        if (streamReference) streamReference.getTracks().forEach(t => t.stop());
+        
+        navigator.mediaDevices.getUserMedia({ video: { facingMode: mode } })
+            .then(s => { 
+                streamReference = s; 
+                video.srcObject = s; 
+                // ถ้าเป็นกล้องหน้า ให้ mirror ถ้าเป็นกล้องหลังไม่ต้อง
+                video.className = (mode === "user") ? "mirror" : "";
+            })
+            .catch(e => { alert("เปิดกล้องไม่ได้: " + e.message); });
+    }
+
+    document.getElementById('startCameraBtn').addEventListener('click', () => {
+        document.getElementById('startCameraBtn').classList.add('d-none');
+        cameraArea.classList.remove('d-none');
+        startCamera(currentFacingMode);
+    });
+
+    switchBtn.addEventListener('click', () => {
+        currentFacingMode = (currentFacingMode === "user") ? "environment" : "user";
+        startCamera(currentFacingMode);
+    });
+
+    document.getElementById('captureBtn').addEventListener('click', () => {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        
+        uploadedBase64 = canvas.toDataURL('image/jpeg', 0.8);
+        document.getElementById('previewImage').src = uploadedBase64;
+        
+        // ถ้าถ่ายกล้องหน้ามาแล้วรูปมันกลับด้านใน Preview ก็ใส่ mirror ให้มันหน่อย
+        document.getElementById('previewImage').className = video.className;
+
+        cameraArea.classList.add('d-none'); 
+        previewArea.classList.remove('d-none');
+        if(streamReference) streamReference.getTracks().forEach(t => t.stop());
+    });
+
+    document.getElementById('retakeBtn').addEventListener('click', () => {
+        previewArea.classList.add('d-none');
+        cameraArea.classList.remove('d-none');
+        startCamera(currentFacingMode);
+    });
+
+    // Submit form
+    document.getElementById('registerForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        if(!uploadedBase64) { alert("กรุณาถ่ายรูป!"); return; }
+        
+        fetch('/api/register', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                student_id: document.getElementById('student_id').value,
+                name: document.getElementById('name').value,
+                department: document.getElementById('department').value,
+                room: document.getElementById('room').value,
+                class_group: document.getElementById('class_group').value,
+                image: uploadedBase64
+            })
+        }).then(r => r.json()).then(data => {
+            if(data.status === 'success') { alert("บันทึกสำเร็จ!"); window.location.reload(); }
+        });
+    });
+</script>
+</body>
+</html>

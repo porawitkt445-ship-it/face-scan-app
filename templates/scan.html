@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบสแกนใบหน้า</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        body { background-color: #212121; font-family: 'Kanit', sans-serif; min-height: 100vh; display: flex; align-items: center; justify-content: center; color: white; margin: 0; }
+        .scan-container { width: 90%; max-width: 500px; text-align: center; }
+        .scan-header { font-weight: 600; color: #198754; margin-bottom: 10px; }
+        .camera-box { border: 2px solid #ffc107; border-radius: 12px; padding: 5px; background: #000; margin-bottom: 20px; }
+        .camera-box img { width: 100%; border-radius: 8px; }
+        
+        #statusBox {
+            background: #198754; color: white; padding: 20px; border-radius: 12px; margin-bottom: 20px;
+            font-size: 1.2rem; font-weight: 600; display: none; border: 2px solid #fff;
+            box-shadow: 0 0 15px rgba(25, 135, 84, 0.7);
+        }
+        .btn-back { border: 1.5px solid #fff; background: transparent; color: white; padding: 10px 30px; border-radius: 8px; font-weight: 600; }
+        .btn-back:hover { background: white; color: #000; }
+    </style>
+</head>
+<body>
+
+    <div class="scan-container">
+        <h4 class="scan-header">📸 ระบบสแกนใบหน้าแบบเรียลไทม์</h4>
+        <p class="text-white-50">กรุณาจัดใบหน้าให้อยู่ในกรอบเพื่อบันทึกเวลาเข้าเรียน</p>
+        
+        <div id="statusBox"></div>
+        
+        <div class="camera-box">
+            <img src="{{ url_for('video_feed') }}" alt="Camera Feed">
+        </div>
+
+        <a href="/dashboard" class="btn btn-back">🏠 กลับเมนูหลัก</a>
+    </div>
+
+    <script>
+        let lastLoggedId = "";
+
+        setInterval(() => {
+            fetch('/api/attendance-logs')
+                .then(response => response.json())
+                .then(logs => {
+                    if (logs.length > 0) {
+                        const lastLog = logs[0];
+                        
+                        if (lastLog.student_id !== lastLoggedId) {
+                            lastLoggedId = lastLog.student_id;
+                            const statusBox = document.getElementById('statusBox');
+                            
+                            // ปรับข้อความให้ชัดเจนว่าเช็คชื่อสำเร็จแล้ว
+                            statusBox.innerHTML = `
+                                <div style="font-size: 1.5rem;">✅ เช็คชื่อสำเร็จ!</div>
+                                <div style="font-size: 1.1rem; margin-top: 5px;">${lastLog.name}</div>
+                                <small style="font-size: 0.9rem; opacity: 0.9;">
+                                    รหัส: ${lastLog.student_id} | แผนก: ${lastLog.department} | ห้อง: ${lastLog.room}
+                                </small>
+                            `;
+                            statusBox.style.display = 'block';
+                            setTimeout(() => { statusBox.style.display = 'none'; }, 5000);
+                        }
+                    }
+                });
+        }, 1000); 
+    </script>
+</body>
+</html>

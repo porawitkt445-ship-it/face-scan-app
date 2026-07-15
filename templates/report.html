@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>รายการการเข้าเรียน</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Kanit', sans-serif; background-color: #d1d1d1; padding: 10px; }
+        .report-card { background: white; width: 100%; max-width: 800px; margin: 0 auto; padding: 15px; border: 1px solid #999; border-radius: 4px; }
+        .table-container { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        .table { width: 100%; border-collapse: collapse !important; margin-top: 10px; min-width: 600px; }
+        .table-header { background-color: #000 !important; color: white; }
+        th { border: 1px solid #000 !important; padding: 10px !important; text-align: center; white-space: nowrap; }
+        td { border: 1px solid #000 !important; padding: 10px !important; text-align: center; height: 45px; vertical-align: middle; white-space: nowrap; }
+        #btnShowAbsent { border: 1px solid #000; border-radius: 4px; padding: 5px 15px; font-weight: 600; cursor: pointer; }
+        .btn-del { padding: 4px 10px; font-size: 0.85rem; font-weight: 600; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+<div class="report-card">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="fw-bold">📊 รายการการเข้าเรียน</h5>
+        <button id="btnShowAbsent" class="btn btn-light btn-sm">ดูคนที่ไม่เข้า</button>
+    </div>
+
+    <div class="table-container">
+        <table class="table table-bordered table-hover">
+            <thead class="table-header">
+                <tr>
+                    <th>ลำดับ</th>
+                    <th>รหัสนักเรียน</th>
+                    <th>ชื่อ-นามสกุล</th>
+                    <th>ห้อง</th>
+                    <th>เวลา</th>
+                    <th>สถานะ</th>
+                    <th>จัดการ</th>
+                </tr>
+            </thead>
+            <tbody id="reportTableBody"></tbody>
+        </table>
+    </div>
+    
+    <div class="text-center mt-3">
+        <a href="/dashboard" class="btn btn-outline-secondary fw-bold">🏠 กลับหน้าหลัก</a>
+    </div>
+</div>
+
+<script>
+    let showAbsent = false;
+
+    function loadData(isAbsent) {
+        const url = isAbsent ? '/api/absent-students' : '/api/attendance-logs';
+        const tbody = document.getElementById('reportTableBody');
+        
+        fetch(url, { cache: 'no-store' })
+        .then(r => r.json())
+        .then(data => {
+            tbody.innerHTML = '';
+            if (data.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" style="padding: 20px; color: gray;">ไม่มีข้อมูลในขณะนี้</td></tr>`;
+                return;
+            }
+            
+            data.forEach((log, i) => {
+                const nameDisplay = log.name ? log.name : '<span class="text-danger small" style="font-size:0.8rem;">⚠️ ยังไม่ได้ลงทะเบียน</span>';
+                const roomDisplay = log.room ? log.room : '-';
+                
+                // ✅ แก้ตรงนี้: เอา .substring() ออก เพื่อให้โชว์ วัน/เดือน/ปี ที่ส่งมาจากฐานข้อมูลแบบเต็มๆ
+                const timeDisplay = log.timestamp ? log.timestamp + ' น.' : '-';
+
+                tbody.innerHTML += `<tr>
+                    <td>${i + 1}</td>
+                    <td class="fw-bold">${log.student_id || '-'}</td>
+                    <td class="text-start">${nameDisplay}</td>
+                    <td>${roomDisplay}</td>
+                    <td>${timeDisplay}</td>
+                    <td class="${isAbsent ? 'text-danger' : 'text-success'} fw-bold">
+                        ${isAbsent ? '❌ ขาดเรียน' : '✅ มาเรียน'}
+                    </td>
+                    <td>
+                        ${!isAbsent ? `<button class="btn btn-danger btn-del" onclick="deleteLog(${log.id})">ลบ</button>` : '-'}
+                    </td>
+                </tr>`;
+            });
+        });
+    }
+
+    // ฟังก์ชันลบที่แม่นยำที่สุดโดยใช้ logId
+    function deleteLog(logId) {
+        if(confirm('⚠️ ต้องการลบรายการนี้ใช่หรือไม่?')) {
+            fetch('/api/delete-log/' + logId, { method: 'DELETE' })
+            .then(r => r.json())
+            .then(data => {
+                if(data.status === 'success') {
+                    loadData(showAbsent);
+                } else {
+                    alert('เกิดข้อผิดพลาดในการลบ');
+                }
+            });
+        }
+    }
+
+    setInterval(() => {
+        // เช็คว่าไม่ได้เปิด confirm dialog ค้างไว้ค่อยโหลดข้อมูล
+        loadData(showAbsent);
+    }, 3000);
+
+    document.getElementById('btnShowAbsent').addEventListener('click', function() {
+        showAbsent = !showAbsent;
+        this.innerText = showAbsent ? "ดูคนที่มาเรียน" : "ดูคนที่ไม่เข้า";
+        loadData(showAbsent);
+    });
+
+    loadData(false);
+</script>
+</body>
+</html>

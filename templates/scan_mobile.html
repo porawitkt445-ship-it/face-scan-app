@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>สแกนผ่านมือถือ</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        body { background-color: #212121; font-family: 'Kanit', sans-serif; min-height: 100vh; display: flex; align-items: center; justify-content: center; color: white; margin: 0; }
+        .scan-container { width: 90%; max-width: 500px; text-align: center; }
+        .camera-box { border: 3px solid #0dcaf0; border-radius: 12px; padding: 5px; background: #000; margin-bottom: 15px; }
+        #video { width: 100%; border-radius: 8px; }
+        /* สลับซ้ายขวา (กระจก) เฉพาะกล้องหน้า */
+        .mirror { transform: scaleX(-1); }
+        #statusBox { background: #198754; color: white; padding: 15px; border-radius: 12px; margin-bottom: 20px; display: none; font-weight: 600; border: 2px solid #fff; }
+        .scanning-text { color: #ffc107; font-size: 1.1rem; margin-bottom: 10px; }
+        .btn-action { width: 100%; padding: 12px; border-radius: 8px; font-weight: 600; margin-top: 10px; }
+    </style>
+</head>
+<body>
+    <div class="scan-container">
+        <h4 class="text-info fw-bold">📱 สแกนผ่านกล้องมือถือ</h4>
+        <div id="statusBox"></div>
+        <div id="loadingText" class="scanning-text">กำลังเตรียมกล้อง...</div>
+        
+        <div class="camera-box">
+            <video id="video" autoplay playsinline muted></video>
+        </div>
+        
+        <button id="switchBtn" class="btn btn-warning btn-action">🔄 สลับกล้องหน้า/หลัง</button>
+        <a href="/dashboard" class="btn btn-outline-light btn-action">🏠 กลับหน้าหลัก</a>
+        
+        <canvas id="canvas" style="display:none;"></canvas>
+    </div>
+
+    <script>
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const statusBox = document.getElementById('statusBox');
+        const loadingText = document.getElementById('loadingText');
+        const switchBtn = document.getElementById('switchBtn');
+        
+        let currentFacingMode = "user"; // user = หน้า, environment = หลัง
+        let streamReference = null;
+        let isSuccess = false;
+        let isSending = false;
+
+        // ฟังก์ชันเริ่มกล้อง
+        function startCamera(mode) {
+            // ปิดกล้องตัวเก่าก่อนเสมอ
+            if (streamReference) {
+                streamReference.getTracks().forEach(track => track.stop());
+            }
+
+            navigator.mediaDevices.getUserMedia({ video: { facingMode: mode } })
+            .then(stream => { 
+                streamReference = stream;
+                video.srcObject = stream; 
+                loadingText.innerText = "กำลังสแกนใบหน้า...";
+                
+                // ถ้าเป็นกล้องหน้า ให้ใส่ Mirror ถ้าเป็นกล้องหลัง เอาออก
+                if (mode === "user") video.classList.add('mirror');
+                else video.classList.remove('mirror');
+            })
+            .catch(err => { 
+                loadingText.innerHTML = `<span class="text-danger">เปิดกล้องไม่ได้: ${err.name}</span>`;
+                console.error("Camera Error:", err);
+            });
+        }
+
+        // กดปุ่มสลับ
+        switchBtn.addEventListener('click', () => {
+            currentFacingMode = (currentFacingMode === "user") ? "environment" : "user";
+            startCamera(currentFacingMode);
+        });
+
+        // เริ่มต้น
+        startCamera(currentFacingMode);
+
+        // ระบบส่งภาพ
+        setInterval(() => {
+            if (video.videoWidth === 0 || isSuccess || isSending) return;
+            isSending = true;
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+            
+            fetch('/api/process-frame', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ image: canvas.toDataURL('image/jpeg', 0.5) })
+            })
+            .then(r => r.json())
+            .then(data => {
+                isSending = false;
+                if(data.student_id !== "Unknown") {
+                    isSuccess = true;
+                    loadingText.style.display = 'none';
+                    statusBox.innerHTML = `✅ เช็คชื่อสำเร็จ!<br>รหัสนักศึกษา: ${data.student_id}`;
+                    statusBox.style.display = 'block';
+                    setTimeout(() => { 
+                        statusBox.style.display = 'none'; 
+                        loadingText.style.display = 'block'; 
+                        isSuccess = false; 
+                    }, 3000);
+                }
+            })
+            .catch(err => { isSending = false; });
+        }, 800);
+    </script>
+</body>
+</html>

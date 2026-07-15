@@ -1,5 +1,5 @@
 Flask
 opencv-python-headless==4.9.0.80
-numpy
+numpy==1.26.4
 Pillow
 gunicorn
